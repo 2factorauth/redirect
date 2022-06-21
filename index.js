@@ -1,36 +1,34 @@
 const base = "https://2fa.directory/";
+const regions_url = 'https://2fa.directory/api/v3/regions.json';
 const status = 302;
+const cache = caches.default;
 
-async function gatherResponse(response) {
-  const { headers } = response;
-  const contentType = headers.get("content-type") || "";
-  if (contentType.includes("application/json")) {
-    return await response.json();
-  }
+async function fetchRegions() {
+    let request = new Request(regions_url, {headers: {'content-type': 'application/json;charset=UTF-8',}})
+    let response = await cache.match(request);
+    if (!response) {
+        console.log(`Response for request url: ${request.url} not present in cache. Fetching and caching request.`);
+        response = await fetch(request);
+        response = new Response(response.body, response);
+        // Set cache max age to 1 day
+        response.headers.append('Cache-Control', 's-maxage=86400');
+        await cache.put(request, await response.clone());
+    }
+    const {headers} = response;
+    const contentType = headers.get('content-type') || '';
+    if (contentType.includes('application/json')) return await response.json();
 }
 
 async function redirect(request) {
-  // Use the cf object to obtain the country of the request.
-  // The cf object is only avaialble in production.
-  const init = {
-    headers: {
-      "content-type": "application/json;charset=UTF-8",
-    },
-  }
-  const res = await fetch('https://2fa.directory/api/v3/regions.json', init);
-  let countries = await gatherResponse(res);
-  const { pathname, search, hash } = new URL(request.url);
+    let regions = await fetchRegions();
+    const {pathname, search, hash} = new URL(request.url);
+    let country = request.cf?.country.toLowerCase() || 'int';
 
-  let country = request.cf?.country.toLowerCase() || "int";
-
-  if (!(country in countries) || !countries[country]['selection']){
-    country = "int";
-  }
-
-  return Response.redirect(`${base}${country}${pathname}${search}${hash}`, status);
+    // If country code is missing or not possessing "selection" attr, use "int" instead.
+    if (!(country in regions) || !regions[country]['selection']) country = 'int';
+    return Response.redirect(`${base}${country}${pathname}${search}${hash}`, status);
 }
 
-addEventListener("fetch", event => {
-  event.respondWith(redirect(event.request));
+addEventListener('fetch', event => {
+    event.respondWith(redirect(event.request));
 })
-

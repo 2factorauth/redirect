@@ -1,6 +1,6 @@
 ### The MIT License (MIT)
 
-Copyright © 2022 [2FactorAuth](https://github.com/2factorauth) and Contributors.
+Copyright © 2022 [2factorauth](https://github.com/2factorauth) and Contributors.
 
 Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation
